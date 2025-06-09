@@ -1,6 +1,6 @@
 // components/Sidebar.tsx
 import { Inertia } from '@inertiajs/inertia';
-import { BarChart3, LogOut, Receipt, Settings, TrendingUp, User, Menu, X } from 'lucide-react';
+import { BarChart3, LogOut, Receipt, Settings, TrendingUp, User, Menu, X, AlertTriangle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
 interface SidebarProps {
@@ -10,23 +10,33 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
     
     const menuItems = [
-    { id: 'overview', label: 'Dashboard', icon: BarChart3, route: '/' },
-    { id: 'expenses', label: 'Transactions', icon: Receipt, route: '/' },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp, route: '/' }, // optional
-    { id: 'profile', label: 'Profile', icon: User, route: '/profile' },
-];
+        { id: 'overview', label: 'Dashboard', icon: BarChart3, route: '/' },
+        { id: 'expenses', label: 'Transactions', icon: Receipt, route: '/' },
+        { id: 'analytics', label: 'Analytics', icon: TrendingUp, route: '/' }, // optional
+        { id: 'profile', label: 'Profile', icon: User, route: '/settings/profile' },
+    ];
 
     const handleLogout = () => {
         Inertia.post('/logout', {}, {});
+        setShowLogoutModal(false);
     };
 
-   const handleMenuItemClick = (itemId: string, route: string) => {
-    setActiveTab(itemId);
-    Inertia.visit(route);
-    setIsMobileMenuOpen(false);
-};
+    const handleLogoutClick = () => {
+        setShowLogoutModal(true);
+    };
+
+    const handleCancelLogout = () => {
+        setShowLogoutModal(false);
+    };
+
+    const handleMenuItemClick = (itemId: string, route: string) => {
+        setActiveTab(itemId);
+        Inertia.visit(route);
+        setIsMobileMenuOpen(false);
+    };
 
     // Close mobile menu when clicking outside
     useEffect(() => {
@@ -47,9 +57,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isMobileMenuOpen]);
 
-    // Prevent body scroll when mobile menu is open
+    // Prevent body scroll when mobile menu or modal is open
     useEffect(() => {
-        if (isMobileMenuOpen) {
+        if (isMobileMenuOpen || showLogoutModal) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
@@ -58,7 +68,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
         return () => {
             document.body.style.overflow = 'unset';
         };
-    }, [isMobileMenuOpen]);
+    }, [isMobileMenuOpen, showLogoutModal]);
+
+    // Handle ESC key to close modal
+    useEffect(() => {
+        const handleEscKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && showLogoutModal) {
+                setShowLogoutModal(false);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscKey);
+        return () => document.removeEventListener('keydown', handleEscKey);
+    }, [showLogoutModal]);
 
     return (
         <>
@@ -78,6 +100,42 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
             {/* Mobile Overlay */}
             {isMobileMenuOpen && (
                 <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" />
+            )}
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                                <AlertTriangle className="h-6 w-6 text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Confirm Logout</h3>
+                                <p className="text-sm text-gray-500">Are you sure you want to sign out?</p>
+                            </div>
+                        </div>
+                        
+                        <p className="text-gray-600 mb-6">
+                            You will be logged out of your CuanKu account and redirected to the login page.
+                        </p>
+                        
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleCancelLogout}
+                                className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleLogout}
+                                className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Sidebar */}
@@ -123,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
                         
                         {/* Logout Button */}
                         <button
-                            onClick={handleLogout}
+                            onClick={handleLogoutClick}
                             className="group flex w-full items-center gap-3 rounded-xl border border-red-200 px-4 py-3 text-left text-red-600 transition-all duration-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
                         >
                             <LogOut className="h-5 w-5 transition-transform duration-200 group-hover:scale-105" />

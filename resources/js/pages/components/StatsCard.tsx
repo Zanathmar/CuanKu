@@ -62,7 +62,7 @@ const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
         return (
           <div
             key={index}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 transform "
           >
             <div className="flex items-center justify-between mb-4">
               <div className={`w-12 h-12 ${card.iconBg} rounded-xl flex items-center justify-center shadow-sm`}>
