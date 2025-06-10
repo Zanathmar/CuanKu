@@ -27,20 +27,11 @@ class ProfileUpdateRequest extends FormRequest
             ],
         ];
 
-        // Only validate password fields if current_password is provided
-        if ($this->filled('current_password')) {
+        // Validate password fields if any password field is provided
+        if ($this->filled('current_password') || $this->filled('password') || $this->filled('password_confirmation')) {
             $rules['current_password'] = ['required', 'current_password'];
-            
-            // Only require new password if current password is provided
-            if ($this->filled('password')) {
-                $rules['password'] = ['required', 'confirmed', Password::defaults()];
-                $rules['password_confirmation'] = ['required'];
-            }
-        }
-
-        // If password is provided but no current_password, require current_password
-        if ($this->filled('password') && !$this->filled('current_password')) {
-            $rules['current_password'] = ['required', 'current_password'];
+            $rules['password'] = ['required', 'confirmed', Password::defaults()];
+            $rules['password_confirmation'] = ['required'];
         }
 
         return $rules;
@@ -60,8 +51,8 @@ class ProfileUpdateRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        // If only updating profile info without password, remove password fields
-        if (!$this->filled('current_password') && !$this->filled('password') && !$this->filled('password_confirmation')) {
+        // Clean up empty password fields
+        if (empty($this->current_password) && empty($this->password) && empty($this->password_confirmation)) {
             $this->request->remove('current_password');
             $this->request->remove('password');
             $this->request->remove('password_confirmation');

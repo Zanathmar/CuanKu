@@ -14,8 +14,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     
     const menuItems = [
         { id: 'overview', label: 'Dashboard', icon: BarChart3, route: '/' },
-        { id: 'expenses', label: 'Transactions', icon: Receipt, route: '/' },
-        { id: 'analytics', label: 'Analytics', icon: TrendingUp, route: '/' }, // optional
+        { id: 'expenses', label: 'Transactions', icon: Receipt, route: '/transactions' },
+        { id: 'analytics', label: 'Analytics', icon: TrendingUp, route: '/analytics' }, // optional
         { id: 'profile', label: 'Profile', icon: User, route: '/settings/profile' },
     ];
 

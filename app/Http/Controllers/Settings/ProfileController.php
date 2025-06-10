@@ -35,44 +35,39 @@ class ProfileController extends Controller
             $validated = $request->validated();
             $user = $request->user();
 
-            // Jika ada attempt untuk update password, validate current password
-            if ($request->filled('current_password') || $request->filled('password')) {
-                if (!$request->filled('current_password')) {
-                    return redirect()->back()->withErrors([
-                        'current_password' => 'Current password is required to change your password.'
-                    ])->withInput($request->except(['current_password', 'password', 'password_confirmation']));
-                }
-
-                if (!Hash::check($request->current_password, $user->password)) {
-                    return redirect()->back()->withErrors([
-                        'current_password' => 'The current password is incorrect.'
-                    ])->withInput($request->except(['current_password', 'password', 'password_confirmation']));
-                }
-            }
-
-            // Update basic info
+            // Update basic profile information
             $user->fill([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
             ]);
 
+            // If email is changed, reset email verification
             if ($user->isDirty('email')) {
                 $user->email_verified_at = null;
             }
 
-            // Update password jika provided dan validated
+            // Update password if provided and validated
             if (isset($validated['password']) && !empty($validated['password'])) {
                 $user->password = Hash::make($validated['password']);
+                Log::info('Password updated for user', ['user_id' => $user->id]);
             }
 
+            // Save all changes
             $user->save();
+
+            // Clear any existing sessions if password was changed
+            if (isset($validated['password']) && !empty($validated['password'])) {
+                // Regenerate session to prevent session fixation
+                $request->session()->regenerate();
+            }
 
             return redirect()->back()->with('status', 'Profile updated successfully!');
             
         } catch (\Exception $e) {
             Log::error('Profile update error', [
                 'user_id' => $request->user()->id ?? 'unknown',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->back()->withErrors([
