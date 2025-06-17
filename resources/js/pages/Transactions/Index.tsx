@@ -172,17 +172,17 @@ const TransactionsIndex: React.FC<Props> = ({ expenses, incomes, stats, flash = 
 
   return (
     <>
-      <Head title="Transactions - CuanKu" />
+      <Head title="Transactions" />
       
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         
-        <main className="flex-1 lg:ml-64 p-4 lg:p-8">
+        <main className="flex-1 w-full lg:ml-64 p-3 sm:p-4 lg:p-8 overflow-hidden">
           {/* Flash Messages */}
           {flashMessages.map((message, index) => (
             <div 
               key={index}
-              className={`mb-6 p-4 rounded-2xl border-l-4 shadow-lg backdrop-blur-sm transition-all duration-300 ${
+              className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl border-l-4 shadow-lg backdrop-blur-sm transition-all duration-300 ${
                 message.type === 'success' 
                   ? 'bg-green-50/90 border-green-500 text-green-700' 
                   : 'bg-red-50/90 border-red-500 text-red-700'
@@ -190,12 +190,12 @@ const TransactionsIndex: React.FC<Props> = ({ expenses, incomes, stats, flash = 
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <AlertCircle className="w-5 h-5 mr-2" />
-                  {message.message}
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
+                  <span className="text-sm sm:text-base">{message.message}</span>
                 </div>
                 <button
                   onClick={() => dismissFlashMessage(index)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors ml-2 flex-shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -204,272 +204,109 @@ const TransactionsIndex: React.FC<Props> = ({ expenses, incomes, stats, flash = 
           ))}
 
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Transactions
                 </h1>
-                <p className="text-gray-600 mt-2 text-lg">Manage your financial activities</p>
+                <p className="text-gray-600 mt-1 sm:mt-2 text-base sm:text-lg">Manage your financial activities</p>
               </div>
-              
             </div>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Balance Card */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl">
-                  <Wallet className="w-6 h-6 text-white" />
+          {/* Stats Cards - Fixed width for desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            {/* Income Card */}
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="p-3 sm:p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl">
+                  <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
                 <button
                   onClick={() => setShowBalance(!showBalance)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  {showBalance ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-2">Current Balance</p>
-                <p className={`text-2xl font-bold ${getBalanceColor()}`}>
-                  {showBalance ? formatCurrency(stats.currentBalance) : '••••••'}
+                <p className="text-sm sm:text-base text-gray-600 mb-2 sm:mb-3 font-medium">Total Income</p>
+                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-600">
+                  {showBalance ? formatCurrency(stats.totalIncome) : '••••••••'}
                 </p>
-              </div>
-            </div>
-
-            {/* Income Card */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl">
-                  <TrendingUp className="w-6 h-6 text-white" />
+                <div className="flex items-center mt-3 text-sm text-green-600">
+                  <ArrowUpRight className="w-4 h-4 mr-1" />
+                  <span>Income received</span>
                 </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Total Income</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {showBalance ? formatCurrency(stats.totalIncome) : '••••••'}
-                </p>
               </div>
             </div>
 
             {/* Expenses Card */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl">
-                  <TrendingDown className="w-6 h-6 text-white" />
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="p-3 sm:p-4 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl">
+                  <TrendingDown className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
+                <button
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-2">Total Expenses</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {showBalance ? formatCurrency(stats.totalExpenses) : '••••••'}
+                <p className="text-sm sm:text-base text-gray-600 mb-2 sm:mb-3 font-medium">Total Expenses</p>
+                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-600">
+                  {showBalance ? formatCurrency(stats.totalExpenses) : '••••••••'}
                 </p>
+                <div className="flex items-center mt-3 text-sm text-red-600">
+                  <ArrowDownRight className="w-4 h-4 mr-1" />
+                  <span>Money spent</span>
+                </div>
               </div>
             </div>
 
-            {/* Transactions Count */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl">
-                  <Receipt className="w-6 h-6 text-white" />
+            {/* Current Balance Card */}
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 sm:p-8 shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-300 sm:col-span-2 xl:col-span-1">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl">
+                  <Wallet className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
+                <button
+                  onClick={() => setShowBalance(!showBalance)}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-2">Total Transactions</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.transactionCount}</p>
+                <p className="text-sm sm:text-base text-gray-600 mb-2 sm:mb-3 font-medium">Current Balance</p>
+                <p className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${getBalanceColor()}`}>
+                  {showBalance ? formatCurrency(stats.currentBalance) : '••••••••'}
+                </p>
+                <div className="flex items-center mt-3 text-sm text-gray-600">
+                  <PieChart className="w-4 h-4 mr-1" />
+                  <span>{stats.transactionCount} transactions</span>
+                </div>
               </div>
             </div>
           </div>
           
-
-          {/* Transactions Table */}
-          <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden">
-            <TransactionsTable
-              expenses={expenses}
-              incomes={incomes}
-              onDelete={handleDelete}
-              processing={processing}
-            />
+          {/* Transactions Table - With horizontal scroll */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden">  
+            {/* Scrollable table container */}
+            <div className="overflow-x-auto">
+              <div className="min-w-full">
+                <TransactionsTable
+                  expenses={expenses}
+                  incomes={incomes}
+                  onDelete={handleDelete}
+                  processing={processing}
+                />
+              </div>
+            </div>
           </div>
-
-          {/* Add Expense Modal */}
-          {isExpenseModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 transform transition-all duration-300 scale-100">
-                <div className="flex items-center justify-between p-6 border-b border-gray-200/50">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-r from-red-500 to-red-600 rounded-xl">
-                      <ArrowDownRight className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900">Add New Expense</h3>
-                  </div>
-                  <button
-                    onClick={closeModals}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-xl"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <form onSubmit={handleExpenseSubmit} className="p-6 space-y-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Expense Title
-                    </label>
-                    <input
-                      type="text"
-                      value={expenseForm.title}
-                      onChange={(e) => setExpenseForm({...expenseForm, title: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 bg-white/50 backdrop-blur-sm"
-                      placeholder="Enter expense title"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Amount (IDR)
-                    </label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="number"
-                        value={expenseForm.amount}
-                        onChange={(e) => setExpenseForm({...expenseForm, amount: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 bg-white/50 backdrop-blur-sm"
-                        placeholder="0"
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Category
-                    </label>
-                    <select
-                      value={expenseForm.category}
-                      onChange={(e) => setExpenseForm({...expenseForm, category: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-900 bg-white/50 backdrop-blur-sm"
-                    >
-                      {categories.map(category => (
-                        <option key={category} value={category}>{category}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={closeModals}
-                      className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-all duration-300 font-medium"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={processing}
-                      className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl hover:from-red-600 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
-                    >
-                      {processing ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Adding...
-                        </div>
-                      ) : (
-                        'Add Expense'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Add Income Modal */}
-          {isIncomeModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="w-full max-w-md bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 transform transition-all duration-300 scale-100">
-                <div className="flex items-center justify-between p-6 border-b border-gray-200/50">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-r from-green-500 to-green-600 rounded-xl">
-                      <ArrowUpRight className="w-5 h-5 text-white" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900">Add New Income</h3>
-                  </div>
-                  <button
-                    onClick={closeModals}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-xl"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <form onSubmit={handleIncomeSubmit} className="p-6 space-y-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Income Source
-                    </label>
-                    <input
-                      type="text"
-                      value={incomeForm.title}
-                      onChange={(e) => setIncomeForm({...incomeForm, title: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 bg-white/50 backdrop-blur-sm"
-                      placeholder="Enter income source"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Amount (IDR)
-                    </label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="number"
-                        value={incomeForm.amount}
-                        onChange={(e) => setIncomeForm({...incomeForm, amount: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 bg-white/50 backdrop-blur-sm"
-                        placeholder="0"
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={closeModals}
-                      className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-all duration-300 font-medium"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={processing}
-                      className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
-                    >
-                      {processing ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Adding...
-                        </div>
-                      ) : (
-                        'Add Income'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </main>
       </div>
     </>

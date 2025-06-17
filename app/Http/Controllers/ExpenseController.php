@@ -73,6 +73,68 @@ class ExpenseController extends Controller
         $totalIncome = Income::sum('amount');
         $currentBalance = $totalIncome - $totalExpenses;
 
+        // Get monthly analytics data for last 12 months
+        $monthlyAnalytics = collect();
+        for ($i = 11; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            
+            $monthExpenses = Expense::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->sum('amount');
+                
+            $monthIncome = Income::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->sum('amount');
+            
+            $monthlyAnalytics->push([
+                'month' => $date->format('M'),
+                'fullMonth' => $date->format('F Y'),
+                'amount' => (float) $monthExpenses,
+                'income' => (float) $monthIncome,
+                'balance' => (float) ($monthIncome - $monthExpenses),
+                'savings' => $monthIncome > 0 ? (($monthIncome - $monthExpenses) / $monthIncome) * 100 : 0
+            ]);
+        }
+
+        // Get category analytics
+        $categoryAnalytics = Expense::selectRaw('category, SUM(amount) as total, COUNT(*) as transactions')
+            ->groupBy('category')
+            ->get()
+            ->map(function ($item) use ($totalExpenses) {
+                return [
+                    'category' => $item->category,
+                    'amount' => (float) $item->total,
+                    'transactions' => $item->transactions,
+                    'percentage' => $totalExpenses > 0 ? ($item->total / $totalExpenses) * 100 : 0
+                ];
+            })
+            ->sortByDesc('amount')
+            ->values();
+
+        // Calculate spending trends
+        $currentMonth = $monthlyAnalytics->last();
+        $previousMonth = $monthlyAnalytics->slice(-2, 1)->first();
+        $lastThreeMonths = $monthlyAnalytics->slice(-3);
+        
+        $monthlyChange = $previousMonth && $previousMonth['amount'] > 0 
+            ? (($currentMonth['amount'] - $previousMonth['amount']) / $previousMonth['amount']) * 100 
+            : 0;
+        
+        $averageSpending = $lastThreeMonths->avg('amount');
+        $savingsRate = $currentMonth['income'] > 0 
+            ? (($currentMonth['income'] - $currentMonth['amount']) / $currentMonth['income']) * 100 
+            : 0;
+        
+        $bestSavingsMonth = $monthlyAnalytics->sortByDesc('savings')->first();
+
+        $spendingTrends = [
+            'monthlyChange' => $monthlyChange,
+            'averageSpending' => $averageSpending,
+            'savingsRate' => $savingsRate,
+            'isIncreasing' => $monthlyChange > 0,
+            'bestSavingsMonth' => $bestSavingsMonth
+        ];
+
         return Inertia::render('Analytics/Index', [
             'expenses' => $expenses,
             'incomes' => $incomes,
@@ -82,6 +144,9 @@ class ExpenseController extends Controller
                 'currentBalance' => (float) $currentBalance,
                 'transactionCount' => $expenses->count(),
             ],
+            'monthlyAnalytics' => $monthlyAnalytics,
+            'categoryAnalytics' => $categoryAnalytics,
+            'spendingTrends' => $spendingTrends,
         ]);
     }
 

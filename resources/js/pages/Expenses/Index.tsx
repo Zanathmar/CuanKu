@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PlusCircle, Wallet } from 'lucide-react';
+import { PlusCircle, Wallet, TrendingUp } from 'lucide-react';
 
 // Components
 import Sidebar from '../components/Sidebar';
@@ -123,8 +123,9 @@ const Index: React.FC<PageProps> = ({
               {/* Add Balance Button (styled like Income) */}
               <Button 
                 onClick={() => setShowBalanceForm(true)}
-                variant="secondary"
-                className="bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+                variant="default"
+                size={"default"}
+                className="bg-green-600  hover:bg-green-700 text-white border-green-600 hover:border-green-700"
               >
                 <Wallet className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 <span className="hidden xs:inline">Add Balance</span>
@@ -133,10 +134,10 @@ const Index: React.FC<PageProps> = ({
 
               {/* Add Expense Button */}
               <Button onClick={() => setShowExpenseForm(true)}
-                className='bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700'>
-                <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                <span className="hidden xs:inline">New Expense</span>
-                <span className="xs:hidden">New Expense</span>
+                className='bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700'>
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <span className="hidden xs:inline">Add Expense</span>
+                <span className="xs:hidden">Add Expense</span>
               </Button>
             </div>
           </div>

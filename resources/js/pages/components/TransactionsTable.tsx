@@ -45,6 +45,11 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const formatCurrency = (amount: number): string => {
+    // Handle NaN, null, undefined, or invalid numbers
+    if (!amount || isNaN(amount) || !isFinite(amount)) {
+      amount = 0;
+    }
+    
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -89,14 +94,28 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
     return colors[category] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
+  // Safe number conversion helper
+  const safeNumber = (value: any): number => {
+    if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return !isNaN(parsed) && isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+  };
+
   // Combine and transform expenses and incomes into unified transactions
   const allTransactions: Transaction[] = [
-    ...expenses.map(expense => ({
+    ...(Array.isArray(expenses) ? expenses : []).map(expense => ({
       ...expense,
+      amount: safeNumber(expense.amount),
       type: 'expense' as const
     })),
-    ...incomes.map(income => ({
+    ...(Array.isArray(incomes) ? incomes : []).map(income => ({
       ...income,
+      amount: safeNumber(income.amount),
       type: 'income' as const
     }))
   ];
@@ -133,26 +152,23 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       return sortOrder === 'asc' ? comparison : -comparison;
     });
 
-  const categories = ['all', ...Array.from(new Set(expenses.map(e => e.category)))];
+  const categories = ['all', ...Array.from(new Set((Array.isArray(expenses) ? expenses : []).map(e => e.category).filter(Boolean)))];
 
-  // Calculate summary statistics
-  const totalIncome = filteredTransactions
+  // Calculate summary statistics - FIXED: Use safe number conversion and handle arrays properly
+  const totalIncome = (Array.isArray(incomes) ? incomes : [])
+    .reduce((sum, income) => sum + safeNumber(income.amount), 0);
+    
+  const totalExpenses = (Array.isArray(expenses) ? expenses : [])
+    .reduce((sum, expense) => sum + safeNumber(expense.amount), 0);
+
+  // Calculate filtered totals for display (these are just for the current view)
+  const filteredIncome = filteredTransactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + safeNumber(t.amount), 0);
   
-  const totalExpenses = filteredTransactions
+  const filteredExpensesAmount = filteredTransactions
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // Debug logging - you can remove this in production
-  console.log('Debug Info:', {
-    allTransactions: allTransactions.length,
-    incomes: incomes.length,
-    expenses: expenses.length,
-    selectedType,
-    filteredTransactions: filteredTransactions.length,
-    incomeTransactions: allTransactions.filter(t => t.type === 'income').length
-  });
+    .reduce((sum, t) => sum + safeNumber(t.amount), 0);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
@@ -170,7 +186,6 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
               </p>
             </div>
           </div>
-          
         </div>
 
         {/* Filters */}
@@ -210,11 +225,6 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
-        </div>
-
-        {/* Debug Info - Remove in production */}
-        <div className="mt-2 text-xs text-gray-500">
-          Debug: {allTransactions.length} total, {incomes.length} incomes, {expenses.length} expenses
         </div>
       </div>
 
@@ -395,18 +405,48 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
       {/* Footer with summary */}
       {filteredTransactions.length > 0 && (
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="flex justify-between items-center sm:col-span-1">
-              <span className="text-sm text-gray-600">Transactions:</span>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Filtered:</span>
               <span className="text-sm font-medium text-gray-900">{filteredTransactions.length}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Income:</span>
-              <span className="text-sm font-medium text-green-600">+{formatCurrency(totalIncome)}</span>
+              <span className="text-sm text-gray-600">Filtered Income:</span>
+              <span className="text-sm font-medium text-green-600">+{formatCurrency(filteredIncome)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Expenses:</span>
-              <span className="text-sm font-medium text-red-600">-{formatCurrency(totalExpenses)}</span>
+              <span className="text-sm text-gray-600">Filtered Expenses:</span>
+              <span className="text-sm font-medium text-red-600">-{formatCurrency(filteredExpensesAmount)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Net Balance:</span>
+              <span className={`text-sm font-medium ${
+                (filteredIncome - filteredExpensesAmount) >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {formatCurrency(filteredIncome - filteredExpensesAmount)}
+              </span>
+            </div>
+          </div>
+          
+          {/* Total Summary (All Transactions) */}
+          <div className="border-t border-gray-300 mt-4 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-700">Total Income:</span>
+                <span className="text-sm font-bold text-green-600">+{formatCurrency(totalIncome)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-700">Total Expenses:</span>
+                <span className="text-sm font-bold text-red-600">-{formatCurrency(totalExpenses)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-700">Overall Balance:</span>
+                <span className={`text-sm font-bold ${
+                  (totalIncome - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatCurrency(totalIncome - totalExpenses)}
+                </span>
+              </div>
             </div>
           </div>
         </div>

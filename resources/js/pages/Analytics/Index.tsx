@@ -1,15 +1,15 @@
-// pages/Analytics/Index.tsx
+// resources/js/Pages/Analytics/Index.tsx
 import React, { useState, useMemo } from 'react';
 import { Head } from '@inertiajs/react';
 import Sidebar from '../components/Sidebar';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Area, AreaChart, Legend
-} from 'recharts';
-import { 
-  TrendingUp, TrendingDown, DollarSign, Calendar, 
-  Target, AlertCircle, Eye, Filter, Download
-} from 'lucide-react';
+import {
+  AnalyticsHeader,
+  KeyMetrics,
+  IncomeVsExpensesChart,
+  CategoryBreakdownChart,
+  CategoryDetails,
+  SavingsProgress
+} from '../components/Analytics';
 
 // Types
 interface Expense {
@@ -29,9 +29,11 @@ interface Income {
 
 interface MonthlyData {
   month: string;
+  fullMonth: string;
   amount: number;
   income: number;
   balance: number;
+  savings: number;
 }
 
 interface CategoryData {
@@ -39,6 +41,14 @@ interface CategoryData {
   amount: number;
   percentage: number;
   transactions: number;
+}
+
+interface SpendingTrends {
+  monthlyChange: number;
+  averageSpending: number;
+  savingsRate: number;
+  isIncreasing: boolean;
+  bestSavingsMonth: MonthlyData;
 }
 
 interface AnalyticsProps {
@@ -50,14 +60,36 @@ interface AnalyticsProps {
     currentBalance: number;
     transactionCount: number;
   };
+  monthlyAnalytics?: MonthlyData[];
+  categoryAnalytics?: CategoryData[];
+  spendingTrends?: SpendingTrends;
 }
 
-const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
+const Analytics: React.FC<AnalyticsProps> = ({ 
+  expenses = [], 
+  incomes = [], 
+  stats,
+  monthlyAnalytics: backendMonthlyAnalytics,
+  categoryAnalytics: backendCategoryAnalytics,
+  spendingTrends: backendSpendingTrends
+}) => {
   const [activeTab, setActiveTab] = useState('analytics');
   const [timeframe, setTimeframe] = useState('6M');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Debug logging
+  console.log('Analytics Props:', {
+    expenses: expenses?.length || 0,
+    incomes: incomes?.length || 0,
+    stats,
+    monthlyAnalytics: backendMonthlyAnalytics?.length || 0,
+    categoryAnalytics: backendCategoryAnalytics?.length || 0,
+    spendingTrends: backendSpendingTrends
+  });
 
   const formatCurrency = (amount: number): string => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      amount = 0;
+    }
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -66,9 +98,15 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
     }).format(amount);
   };
 
-  // Calculate monthly data for the last 12 months
+  // Use backend data if available, otherwise calculate client-side
   const monthlyAnalytics = useMemo(() => {
-    const months = [];
+    // If backend provides data, use it
+    if (backendMonthlyAnalytics && backendMonthlyAnalytics.length > 0) {
+      return backendMonthlyAnalytics;
+    }
+
+    // Fallback: calculate client-side
+    const months: MonthlyData[] = [];
     for (let i = 11; i >= 0; i--) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
@@ -79,7 +117,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
           return expenseDate.getMonth() === date.getMonth() && 
                  expenseDate.getFullYear() === date.getFullYear();
         })
-        .reduce((sum, expense) => sum + expense.amount, 0);
+        .reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
       const monthIncome = incomes
         .filter(income => {
@@ -87,7 +125,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
           return incomeDate.getMonth() === date.getMonth() && 
                  incomeDate.getFullYear() === date.getFullYear();
         })
-        .reduce((sum, income) => sum + income.amount, 0);
+        .reduce((sum, income) => sum + (income.amount || 0), 0);
 
       months.push({
         month: date.toLocaleDateString('id-ID', { month: 'short' }),
@@ -99,25 +137,34 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
       });
     }
     return months;
-  }, [expenses, incomes]);
+  }, [expenses, incomes, backendMonthlyAnalytics]);
 
-  // Calculate category analytics
+  // Use backend data if available, otherwise calculate client-side
   const categoryAnalytics = useMemo(() => {
-    const categoryMap = new Map();
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    // If backend provides data, use it
+    if (backendCategoryAnalytics && backendCategoryAnalytics.length > 0) {
+      return backendCategoryAnalytics;
+    }
+
+    // Fallback: calculate client-side
+    const categoryMap = new Map<string, { category: string; amount: number; transactions: number }>();
+    const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
     expenses.forEach(expense => {
-      if (categoryMap.has(expense.category)) {
-        const existing = categoryMap.get(expense.category);
-        categoryMap.set(expense.category, {
+      const category = expense.category || 'Other';
+      const amount = expense.amount || 0;
+      
+      if (categoryMap.has(category)) {
+        const existing = categoryMap.get(category)!;
+        categoryMap.set(category, {
           ...existing,
-          amount: existing.amount + expense.amount,
+          amount: existing.amount + amount,
           transactions: existing.transactions + 1
         });
       } else {
-        categoryMap.set(expense.category, {
-          category: expense.category,
-          amount: expense.amount,
+        categoryMap.set(category, {
+          category,
+          amount,
           transactions: 1
         });
       }
@@ -129,10 +176,33 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
         percentage: totalExpenses > 0 ? (cat.amount / totalExpenses) * 100 : 0
       }))
       .sort((a, b) => b.amount - a.amount);
-  }, [expenses]);
+  }, [expenses, backendCategoryAnalytics]);
 
   // Calculate spending trends
   const spendingTrends = useMemo(() => {
+    // If backend provides data, use it
+    if (backendSpendingTrends) {
+      return backendSpendingTrends;
+    }
+
+    // Fallback: calculate client-side
+    if (monthlyAnalytics.length < 2) {
+      return {
+        monthlyChange: 0,
+        averageSpending: 0,
+        savingsRate: 0,
+        isIncreasing: false,
+        bestSavingsMonth: monthlyAnalytics[0] || {
+          month: '',
+          fullMonth: '',
+          amount: 0,
+          income: 0,
+          balance: 0,
+          savings: 0
+        }
+      };
+    }
+
     const currentMonth = monthlyAnalytics[monthlyAnalytics.length - 1];
     const previousMonth = monthlyAnalytics[monthlyAnalytics.length - 2];
     const lastThreeMonths = monthlyAnalytics.slice(-3);
@@ -155,10 +225,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
         current.savings > best.savings ? current : best
       )
     };
-  }, [monthlyAnalytics]);
-
-  // Colors for charts
-  const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+  }, [monthlyAnalytics, backendSpendingTrends]);
 
   const timeframeOptions = [
     { label: '3M', value: '3M', months: 3 },
@@ -174,6 +241,48 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
     timeframeOptions.find(opt => opt.value === timeframe)?.months || 6
   );
 
+  const handleExport = () => {
+    // Export functionality can be implemented here
+    console.log('Export analytics data');
+  };
+
+  // Show loading or no data state
+  if (!expenses && !incomes) {
+    return (
+      <>
+        <Head title="Analytics - CuanKu" />
+        <div className="min-h-screen bg-gray-50">
+          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+          <div className="lg:ml-64 p-6 lg:p-8">
+            <div className="text-center py-12">
+              <div className="text-gray-500">Loading analytics data...</div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Show no data message if arrays are empty
+  if (expenses.length === 0 && incomes.length === 0) {
+    return (
+      <>
+        <Head title="Analytics - CuanKu" />
+        <div className="min-h-screen bg-gray-50">
+          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+          <div className="lg:ml-64 p-6 lg:p-8">
+            <div className="text-center py-12">
+              <div className="text-gray-500 text-lg">No transaction data available</div>
+              <div className="text-gray-400 text-sm mt-2">
+                Add some expenses or income to see analytics
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Head title="Analytics - CuanKu" />
@@ -182,235 +291,128 @@ const Analytics: React.FC<AnalyticsProps> = ({ expenses, incomes, stats }) => {
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         
         <div className="lg:ml-64 p-6 lg:p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-                <p className="text-gray-600 mt-1">Deep insights into your financial patterns</p>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="flex bg-white rounded-lg p-1 border border-gray-200">
-                  {timeframeOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setTimeframe(option.value)}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                        timeframe === option.value
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                
-                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:text-gray-900 transition-colors">
-                  <Download className="w-4 h-4" />
-                  Export
-                </button>
-              </div>
-            </div>
-          </div>
+          <AnalyticsHeader
+            timeframe={timeframe}
+            onTimeframeChange={setTimeframe}
+            onExport={handleExport}
+          />
 
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className={`flex items-center gap-1 text-sm font-medium ${
-                  spendingTrends.monthlyChange > 0 ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {spendingTrends.isIncreasing ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {Math.abs(spendingTrends.monthlyChange).toFixed(1)}%
-                </span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {formatCurrency(spendingTrends.averageSpending)}
-              </div>
-              <div className="text-sm text-gray-500">Avg Monthly Spending</div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <Target className="w-6 h-6 text-green-600" />
-                </div>
-                <span className={`text-sm font-medium ${
-                  spendingTrends.savingsRate > 20 ? 'text-green-600' : spendingTrends.savingsRate > 10 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
-                  {spendingTrends.savingsRate.toFixed(1)}%
-                </span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {formatCurrency(monthlyAnalytics[monthlyAnalytics.length - 1]?.balance || 0)}
-              </div>
-              <div className="text-sm text-gray-500">Current Savings Rate</div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-purple-600" />
-                </div>
-                <span className="text-sm font-medium text-purple-600">
-                  {categoryAnalytics.length} Categories
-                </span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {categoryAnalytics[0]?.category || 'N/A'}
-              </div>
-              <div className="text-sm text-gray-500">Top Spending Category</div>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-yellow-600" />
-                </div>
-                <span className="text-sm font-medium text-yellow-600">
-                  {spendingTrends.bestSavingsMonth.fullMonth}
-                </span>
-              </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {spendingTrends.bestSavingsMonth.savings.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-500">Best Savings Month</div>
-            </div>
-          </div>
+          <KeyMetrics
+            spendingTrends={spendingTrends}
+            categoryAnalytics={categoryAnalytics}
+            formatCurrency={formatCurrency}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Monthly Trend Chart */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Income vs Expenses</h3>
-                <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-gray-600">Income</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    <span className="text-gray-600">Expenses</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={currentTimeframeData}>
-                    <defs>
-                      <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.05}/>
-                      </linearGradient>
-                      <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#EF4444" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#EF4444" stopOpacity={0.05}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
-                    <Tooltip 
-                      formatter={(value: any) => [formatCurrency(Number(value)), '']}
-                      contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px' }}
-                    />
-                    <Area type="monotone" dataKey="income" stroke="#10B981" fill="url(#incomeGradient)" />
-                    <Area type="monotone" dataKey="amount" stroke="#EF4444" fill="url(#expenseGradient)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <IncomeVsExpensesChart
+              data={currentTimeframeData}
+              formatCurrency={formatCurrency}
+            />
+            
+            <CategoryBreakdownChart
+              data={categoryAnalytics}
+              formatCurrency={formatCurrency}
+            />
+          </div>
 
-            {/* Category Breakdown */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Spending by Category</h3>
-                <Eye className="w-5 h-5 text-gray-400" />
-              </div>
-              
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={categoryAnalytics}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={120}
-                      paddingAngle={2}
-                      dataKey="amount"
-                      label={({ category, percentage }) => `${category} (${percentage.toFixed(1)}%)`}
-                    >
-                      {categoryAnalytics.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any) => [formatCurrency(Number(value)), 'Amount']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div className="lg:col-span-2">
+              <CategoryDetails
+                data={categoryAnalytics}
+                formatCurrency={formatCurrency}
+              />
+            </div>
+            
+            <div>
+              <SavingsProgress
+                data={currentTimeframeData}
+              />
             </div>
           </div>
 
-          {/* Detailed Category Analysis */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-8">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Category Details</h3>
-              <p className="text-gray-600 mt-1">Detailed breakdown of your spending categories</p>
-            </div>
-            
-            <div className="p-6">
+          {/* Additional Analytics Sections */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Recent Transactions Summary */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Recent Activity
+              </h3>
               <div className="space-y-4">
-                {categoryAnalytics.map((category, index) => (
-                  <div key={category.category} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                    <div className="flex items-center gap-4">
-                      <div 
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                      />
-                      <div>
-                        <div className="font-medium text-gray-900">{category.category}</div>
-                        <div className="text-sm text-gray-500">{category.transactions} transactions</div>
-                      </div>
+                {expenses.slice(0, 5).map((expense) => (
+                  <div key={expense.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">{expense.title}</p>
+                      <p className="text-sm text-gray-500">{expense.category}</p>
                     </div>
-                    
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">{formatCurrency(category.amount)}</div>
-                      <div className="text-sm text-gray-500">{category.percentage.toFixed(1)}% of total</div>
-                    </div>
+                    <span className="text-red-600 font-medium">
+                      -{formatCurrency(expense.amount)}
+                    </span>
                   </div>
                 ))}
+                {expenses.length === 0 && (
+                  <p className="text-gray-500 text-sm">No recent expenses</p>
+                )}
+              </div>
+            </div>
+
+            {/* Monthly Comparison */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Monthly Comparison
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-900">This Month</span>
+                  <span className="font-medium text-slate-950">
+                    {formatCurrency(monthlyAnalytics[monthlyAnalytics.length - 1]?.amount || 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-900">Last Month</span>
+                  <span className="font-medium text-slate-900">
+                    {formatCurrency(monthlyAnalytics[monthlyAnalytics.length - 2]?.amount || 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t">
+                  <span className="text-gray-600">Change</span>
+                  <span className={`font-medium ${spendingTrends.isIncreasing ? 'text-red-600' : 'text-green-600'}`}>
+                    {spendingTrends.isIncreasing ? '+' : ''}
+                    {spendingTrends.monthlyChange.toFixed(1)}%
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Savings Progress */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Savings Progress</h3>
-              <p className="text-gray-600 mt-1">Track your monthly savings performance</p>
-            </div>
-            
-            <div className="p-6">
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={currentTimeframeData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                    <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${value.toFixed(0)}%`} />
-                    <Tooltip 
-                      formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Savings Rate']}
-                      contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px' }}
-                    />
-                    <Bar dataKey="savings" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+          {/* Financial Goals Section */}
+          <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Financial Overview
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(stats?.totalIncome || 0)}
+                </div>
+                <div className="text-sm text-gray-500">Total Income</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  {formatCurrency(stats?.totalExpenses || 0)}
+                </div>
+                <div className="text-sm text-gray-500">Total Expenses</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${(stats?.currentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(stats?.currentBalance || 0)}
+                </div>
+                <div className="text-sm text-gray-500">Net Balance</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {stats?.transactionCount || 0}
+                </div>
+                <div className="text-sm text-gray-500">Transactions</div>
               </div>
             </div>
           </div>
